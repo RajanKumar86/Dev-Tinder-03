@@ -1,10 +1,11 @@
 const express = require("express");
 const app = express();
-const PORT = 2000;
+const PORT = 1000;
 const User = require("./model/model");
 const connectDB = require("./config/database");
 const validateFunction = require("./utils/validator");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 app.use(express.json());
 
@@ -32,6 +33,28 @@ app.post("/signUp", async (req, res) => {
     res.send("user added succesfully...");
   } catch (err) {
     res.status(400).send("something went wrong !  " + err.message);
+  }
+});
+
+app.post("/logIn", async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
+    const user = await User.findOne({ emailId: emailId });
+    if (!user) {
+      throw new Error("Invalid Credential ");
+    }
+    const isCorrectPassword = await bcrypt.compare(password, user.password);
+    if (isCorrectPassword) {
+      const token = await jwt.sign({ _id: user._id }, "DevTinder007", {
+        expiresIn: "1d",
+      });
+      res.cookie("token", token);
+      res.send("login sucessfull ! ");
+    } else {
+      res.send("Invalid Credential");
+    }
+  } catch (err) {
+    res.status(404).send("something went wrong!!! " + err.message);
   }
 });
 
@@ -66,13 +89,3 @@ connectDB()
   .catch((err) => {
     console.log("something went wrong.. mongoDB is not connected...");
   });
-
-// app.post("/signUp", async (req, res) => {
-//   try {
-//     const user = new User(req.body);
-//     await user.save();
-//     res.send("user added succesfully...");
-//   } catch (err) {
-//     res.status(400).send("something went wrong" + err.message);
-//   }
-// });
